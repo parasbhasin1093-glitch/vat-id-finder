@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VAT ID Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #F7F8F6;
+    --ink: #1A2421;
+    --accent: #2D5F4C;
+    --warn: #B8753A;
+    --error: #A8453A;
+    --border: #D8DCD6;
+    --panel: #EEF1EB;
+    --muted: #8A8F87;
+    --mutedtext: #5C645E;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  .header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin-bottom: 28px; border-bottom: 2px solid var(--ink); padding-bottom: 16px;
+    flex-wrap: wrap; gap: 10px;
+  }
+  h1 { font-size: 24px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  .subtitle { font-size: 13px; color: var(--mutedtext); margin: 4px 0 0; }
+  .disclaimer { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); text-align: right; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+  .tab-btn {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.04em; padding: 9px 16px; background: transparent; color: var(--ink);
+    border: 1px solid var(--ink); border-radius: 4px; cursor: pointer;
+  }
+  .tab-btn.active { background: var(--ink); color: var(--bg); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  input, select, textarea {
+    padding: 11px 14px; font-size: 14px; border: 1px solid var(--border);
+    border-radius: 4px; background: #fff; font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--ink);
+  }
+  input::placeholder, textarea::placeholder { color: var(--muted); }
+  .name-input { flex: 1 1 320px; }
+  .country-select { width: 200px; }
+  button.primary {
+    padding: 11px 22px; font-size: 13px; font-weight: 600; font-family: 'IBM Plex Mono', monospace;
+    background: var(--accent); color: #fff; border: none; border-radius: 4px; cursor: pointer;
+  }
+  button.primary:disabled { opacity: 0.55; cursor: default; }
+  button.secondary {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 10px 16px;
+    background: none; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; cursor: pointer;
+  }
+  button.dark-outline {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 10px 16px;
+    background: none; color: var(--ink); border: 1px solid var(--ink); border-radius: 4px; cursor: pointer;
+  }
+  textarea.bulk-input { width: 100%; min-height: 130px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; resize: vertical; }
+  .error-banner {
+    padding: 10px 14px; background: #FBEAE6; border: 1px solid var(--error);
+    border-radius: 4px; color: var(--error); font-size: 13px; margin-bottom: 16px;
+  }
+  .info-banner {
+    padding: 12px 16px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 6px; margin-bottom: 20px; font-size: 12px; color: #3D453F; line-height: 1.6;
+  }
+  table { width: 100%; border-collapse: collapse; background: #fff; }
+  thead tr { background: var(--panel); text-align: left; }
+  th { padding: 10px 12px; font-size: 11px; letter-spacing: 0.05em; color: var(--mutedtext); font-weight: 600; font-family: 'IBM Plex Mono', monospace; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .table-wrap { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .supplier-name { font-weight: 600; }
+  .vat-cell { font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+  .vat-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .mismatch { color: var(--error); }
+  .conf-wrap { display: flex; align-items: center; gap: 8px; min-width: 100px; }
+  .conf-track { flex: 1; height: 6px; background: #E2E5DF; border-radius: 3px; overflow: hidden; }
+  .conf-fill { height: 100%; border-radius: 3px; }
+  .conf-label { font-family: 'IBM Plex Mono', monospace; font-size: 12px; min-width: 30px; }
+  .source-link { color: var(--accent); font-size: 12px; text-decoration: none; border-bottom: 1px solid var(--accent); }
+  .no-source { color: var(--muted); font-size: 12px; }
+  .stamp {
+    display: inline-block; font-family: 'IBM Plex Mono', monospace; font-weight: 700;
+    font-size: 10px; letter-spacing: 0.08em; padding: 3px 7px; border-radius: 3px;
+    background: rgba(255,255,255,0.6); white-space: nowrap;
+  }
+  .stamp-valid { border: 2px solid var(--accent); color: var(--accent); transform: rotate(-6deg); }
+  .stamp-invalid { border: 2px solid var(--error); color: var(--error); transform: rotate(-4deg); }
+  .stamp-unconfirmed { border: 2px solid var(--warn); color: var(--warn); transform: rotate(5deg); }
+  .stamp-none { border: 2px solid var(--muted); color: var(--muted); transform: rotate(3deg); }
+  .row-actions { text-align: right; white-space: nowrap; }
+  .btn-mini {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 5px 10px;
+    border-radius: 3px; cursor: pointer; margin-left: 6px;
+  }
+  .btn-mini.vies { background: var(--ink); color: var(--bg); border: none; }
+  .btn-mini.vies:disabled { opacity: 0.5; cursor: default; }
+  .btn-mini.expand { background: none; color: var(--accent); border: 1px solid var(--accent); }
+  .btn-mini.delete { background: none; color: var(--error); border: 1px solid var(--error); }
+  .expand-row td { background: var(--panel); font-size: 12px; color: #3D453F; }
+  .expand-row a { color: var(--accent); text-decoration: underline; }
+  .empty-state {
+    padding: 48px 24px; text-align: center; color: var(--muted);
+    border: 1px dashed var(--border); border-radius: 6px;
+  }
+  .candidates-note { font-size: 11px; color: var(--muted); margin: 8px 0 0; }
+  .footer-note {
+    margin-top: 28px; font-size: 11px; color: var(--muted); line-height: 1.6;
+    border-top: 1px solid var(--border); padding-top: 16px;
+  }
+  .action-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .spinner {
+    display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 6px; vertical-align: -2px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .progress-text { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--mutedtext); align-self: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <h1>VAT ID Finder</h1>
+      <p class="subtitle">Search · extract · cross-check against VIES</p>
+    </div>
+    <div class="disclaimer">confidence is a heuristic,<br/>not a legal guarantee</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="single">SINGLE LOOKUP</button>
+    <button class="tab-btn" data-tab="bulk">BULK UPLOAD</button>
+  </div>
+
+  <div class="panel active" id="panel-single">
+    <div class="row">
+      <input class="name-input" id="single-name" placeholder="Supplier name, e.g. Müller Logistik GmbH" />
+      <select class="country-select" id="single-country">
+        <option value="">Country (optional)</option>
+      </select>
+      <button class="primary" id="single-search-btn">FIND VAT ID</button>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-bulk">
+    <p class="subtitle" style="margin-bottom:8px;">One supplier per line. Optionally add a country code after a comma — e.g. <code>Müller Logistik GmbH, DE</code></p>
+    <textarea class="bulk-input" id="bulk-text" placeholder="Müller Logistik GmbH, DE
+Dupont Fournitures SARL, FR
+Rossi Forniture Srl, IT"></textarea>
+    <div class="row" style="margin-top:10px;">
+      <button class="primary" id="bulk-search-btn">RUN BULK SEARCH</button>
+      <span class="progress-text" id="bulk-progress"></span>
+    </div>
+  </div>
+
+  <div id="error-area"></div>
+
+  <div class="action-bar" id="action-bar" style="display:none;">
+    <button class="dark-outline" id="validate-all-btn">CHECK ALL VS VIES</button>
+    <button class="secondary" id="export-csv-btn">EXPORT CSV</button>
+  </div>
+
+  <div id="results-area">
+    <div class="empty-state"><p style="margin:0;font-size:14px;">No lookups yet. Enter a supplier name above to get started.</p></div>
+  </div>
+
+  <div class="footer-note">
+    <strong style="color:var(--mutedtext);">How this works:</strong> VAT candidates come from a live web search (company imprint pages, registries, directories) and are scored by source reliability and number-format validity — this is a heuristic, not a guarantee. The VIES check calls an official validation chain server-side. Always confirm low-confidence results before filing.
+  </div>
+</div>
+
+<script>
+const COUNTRY_NAMES = {
+  AT: "Austria", BE: "Belgium", BG: "Bulgaria", CY: "Cyprus", CZ: "Czechia",
+  DE: "Germany", DK: "Denmark", EE: "Estonia", EL: "Greece",
+  ES: "Spain", FI: "Finland", FR: "France", HR: "Croatia", HU: "Hungary",
+  IE: "Ireland", IT: "Italy", LT: "Lithuania", LU: "Luxembourg", LV: "Latvia",
+  MT: "Malta", NL: "Netherlands", PL: "Poland", PT: "Portugal", RO: "Romania",
+  SE: "Sweden", SI: "Slovenia", SK: "Slovakia", XI: "Northern Ireland",
+};
+
+let results = [];
+let idCounter = 1;
+let validatingId = null;
+
+function populateCountrySelect() {
+  const sel = document.getElementById('single-country');
+  Object.entries(COUNTRY_NAMES).forEach(([cc, name]) => {
+    const opt = document.createElement('option');
+    opt.value = cc;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+}
+populateCountrySelect();
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+function showError(msg) {
+  const area = document.getElementById('error-area');
+  area.innerHTML = msg ? `<div class="error-banner">${escapeHtml(msg)}</div>` : '';
+}
+
+function escapeHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s == null ? '' : String(s);
+  return div.innerHTML;
+}
+
+function hostnameOf(url) {
+  try { return new URL(url).hostname.replace('www.', ''); }
+  catch { return url ? url.slice(0, 30) : ''; }
+}
+
+async function findVat(supplierName, country) {
+  const resp = await fetch('/api/find-vat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ supplierName, country }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || `Server error (HTTP ${resp.status})`);
+  return data;
+}
+
+async function findVatBulk(items) {
+  const resp = await fetch('/api/find-vat-bulk', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || `Server error (HTTP ${resp.status})`);
+  return data;
+}
+
+async function checkVies(vatNumber) {
+  const resp = await fetch('/api/check-vies', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ vatNumber }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) return { status: 'error', message: data.error || `HTTP ${resp.status}` };
+  return data;
+}
+
+function render() {
+  const area = document.getElementById('results-area');
+  const actionBar = document.getElementById('action-bar');
+
+  if (results.length === 0) {
+    area.innerHTML = '<div class="empty-state"><p style="margin:0;font-size:14px;">No lookups yet. Enter a supplier name above to get started.</p></div>';
+    actionBar.style.display = 'none';
+    return;
+  }
+
+  actionBar.style.display = 'flex';
+
+  let rowsHtml = '';
+  for (const r of results) {
+    rowsHtml += renderRow(r);
+  }
+
+  area.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>SUPPLIER</th><th>VAT ID</th><th>CONFIDENCE</th><th>SOURCE</th><th>STATUS</th><th></th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+
+  attachRowListeners();
+}
+
+function confColor(v) {
+  if (v >= 75) return 'var(--accent)';
+  if (v >= 45) return 'var(--warn)';
+  return 'var(--error)';
+}
+
+function stampHtml(status) {
+  const map = {
+    valid: ['VERIFIED', 'stamp-valid'],
+    invalid: ['INVALID', 'stamp-invalid'],
+    unreachable: ['UNCONFIRMED', 'stamp-unconfirmed'],
+    error: ['UNCONFIRMED', 'stamp-unconfirmed'],
+    none: ['NOT CHECKED', 'stamp-none'],
+  };
+  const [label, cls] = map[status] || map.none;
+  return `<span class="stamp ${cls}">${label}</span>`;
+}
+
+function renderRow(r) {
+  const countryLabel = COUNTRY_NAMES[r.countryCode] || r.countryCode || '';
+  const vatMeta = r.vatNumber
+    ? `<div class="vat-meta">${escapeHtml(countryLabel)}${r.formatOk === false ? ' <span class="mismatch">· format mismatch</span>' : ''}</div>`
+    : '';
+  const sourceHtml = r.sourceUrl
+    ? `<a class="source-link" href="${escapeHtml(r.sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(hostnameOf(r.sourceUrl))}</a>`
+    : `<span class="no-source">no source</span>`;
+  const conf = r.confidence || 0;
+  const validateBtn = (r.vatNumber && r.viesStatus !== 'valid')
+    ? `<button class="btn-mini vies" data-action="validate" data-id="${r.id}" ${validatingId === r.id ? 'disabled' : ''}>${validatingId === r.id ? '
